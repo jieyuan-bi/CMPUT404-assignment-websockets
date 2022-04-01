@@ -55,7 +55,7 @@ function drawCircle(context,entity) {
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
         arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        fill();                                
     }
 }
 
@@ -231,15 +231,15 @@ mouse = (function() {
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'cyan','radius':15});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'red','radius':5});
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    addEntityWithoutName({'x':x,'y':y,'colour':'white',
                           'radius':10});
 });
 
@@ -251,9 +251,17 @@ function update() {
 
 function wsSetup() {
     var url = "ws://"+host+"/subscribe";   
+    // console.log('url',url)
     socket = new WebSocket(url);
-    socket.onopen = function() {
+    socket.onopen = () => {
         //XXX: TODO What are you going to do here?
+        console.log('Socket open')
+        fetch('/world')
+        .then(response => response.json())
+        .then(response => {
+            world = response
+            drawNextFrame()
+        })
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
@@ -261,7 +269,13 @@ function wsSetup() {
     socket.onmessage = function(msg) {  
         try {
             debug("WebSocket Recv:" + msg.data);
-            //XXX: TODO What are you going to do here?            
+            console.log("WebSocket Recv:" + msg.data)
+            //XXX: TODO What are you going to do here? 
+            const data = JSON.parse(msg.data);
+            for (i in data){
+                world[i]=entity[i]
+            }       
+            drawNextFrame()
         } catch (e) {
             alert("socket on message: " + e);
         }

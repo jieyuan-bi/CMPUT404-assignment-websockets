@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 import flask
-from flask import Flask, request
+from flask import Flask, request, redirect
 from flask_sockets import Sockets
 import gevent
 from gevent import queue
@@ -83,20 +83,29 @@ myWorld.add_set_listener( set_listener )
 @app.route('/')
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return None
+    return redirect("/static/index.html", 302)
 
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
-    while 1:
+    # while True:
+    #     msg = ws.receive()
+
+    #     print('msg',msg)
+    #     if not msg:
+    #         break
+    #     else:
+    #         entity = json.loads(msg)
+    #         for i in entity:
+    #             myWorld.set(i, entity[i])
+    msg = ws.receive()
+    print('msg',msg)
+    ws.send(msg)
+    while msg:
+        entities = json.loads(msg)
+        for entity, d in entities.items():
+            myWorld.set(entity, d)
         msg = ws.receive()
-        if not msg:
-            break
-        else:
-            entity = json.loads(msg)
-            for i in entity:
-                myWorld.set(i, entity[i])
-    return None
 
 @sockets.route('/subscribe')
 def subscribe_socket(ws):
@@ -106,17 +115,19 @@ def subscribe_socket(ws):
     client = Client()
     clients.append(client)
     g_event = gevent.spawn(read_ws, ws, client)
-    while 1:
-        try:
-            msg = client.get()
-            ws.send(msg)
-        except Exception as e:
-            print(f'Subscribe_socket error {e}')
-    
-    clients.remove(client)
-    gevent.kill(g_event)
-    return None
 
+    try:
+        while True:
+            print('looping############')
+        
+            msg = client.get()
+            print('looping############',msg)
+            ws.send(msg)
+    except Exception as e:
+        print('Subscribe_socket error',e)
+    finally:
+        clients.remove(client)
+        gevent.kill(g_event)
 
 # I give this to you, this is how you get the raw body/data portion of a post in flask
 # this should come with flask but whatever, it's not my project.
@@ -133,23 +144,26 @@ def flask_post_json():
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     '''update the entities via this interface'''
-    return None
+    data = flask_post_json()
+    myWorld.set(entity, data)
+    return json.dumps(myWorld.get(entity)), 200
 
 @app.route("/world", methods=['POST','GET'])    
 def world():
     '''you should probably return the world here'''
-    return None
+    return json.dumps(myWorld.world()), 200
 
 @app.route("/entity/<entity>")    
 def get_entity(entity):
     '''This is the GET version of the entity interface, return a representation of the entity'''
-    return None
+    return json.dumps(myWorld.get(entity)), 200
 
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
     '''Clear the world out!'''
-    return None
+    myWorld.clear()
+    return json.dumps(myWorld.world()), 200
 
 
 
