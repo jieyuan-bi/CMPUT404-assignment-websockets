@@ -26,6 +26,16 @@ app = Flask(__name__)
 sockets = Sockets(app)
 app.debug = True
 
+class Client:
+    def __init__(self):
+        self.queue = queue.Queue()
+
+    def put(self, v):
+        self.queue.put_nowait(v)
+
+    def get(self):
+        return self.queue.get()
+
 class World:
     def __init__(self):
         self.clear()
@@ -59,10 +69,14 @@ class World:
     def world(self):
         return self.space
 
-myWorld = World()        
+myWorld = World()  
+
+clients=[]      
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
+    for client in clients:
+        client.put(json.dumps({entity: data}))
 
 myWorld.add_set_listener( set_listener )
         
@@ -74,6 +88,14 @@ def hello():
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
+    while 1:
+        msg = ws.receive()
+        if not msg:
+            break
+        else:
+            entity = json.loads(msg)
+            for i in entity:
+                myWorld.set(i, entity[i])
     return None
 
 @sockets.route('/subscribe')
@@ -81,6 +103,18 @@ def subscribe_socket(ws):
     '''Fufill the websocket URL of /subscribe, every update notify the
        websocket and read updates from the websocket '''
     # XXX: TODO IMPLEMENT ME
+    client = Client()
+    clients.append(client)
+    g_event = gevent.spawn(read_ws, ws, client)
+    while 1:
+        try:
+            msg = client.get()
+            ws.send(msg)
+        except Exception as e:
+            print(f'Subscribe_socket error {e}')
+    
+    clients.remove(client)
+    gevent.kill(g_event)
     return None
 
 
