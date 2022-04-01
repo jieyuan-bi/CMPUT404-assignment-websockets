@@ -88,24 +88,16 @@ def hello():
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
-    # while True:
-    #     msg = ws.receive()
-
-    #     print('msg',msg)
-    #     if not msg:
-    #         break
-    #     else:
-    #         entity = json.loads(msg)
-    #         for i in entity:
-    #             myWorld.set(i, entity[i])
-    msg = ws.receive()
-    print('msg',msg)
-    ws.send(msg)
-    while msg:
-        entities = json.loads(msg)
-        for entity, d in entities.items():
-            myWorld.set(entity, d)
+    while True:
         msg = ws.receive()
+
+        print('msg',msg)
+        if not msg:
+            break
+        else:
+            entity = json.loads(msg)
+            for i in entity:
+                myWorld.set(i, entity[i])
 
 @sockets.route('/subscribe')
 def subscribe_socket(ws):
